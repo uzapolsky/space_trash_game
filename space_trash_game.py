@@ -5,9 +5,58 @@ from itertools import cycle, count
 from random import choice, randint
 
 
+SPACE_KEY_CODE = 32
+LEFT_KEY_CODE = 260
+RIGHT_KEY_CODE = 261
+UP_KEY_CODE = 259
+DOWN_KEY_CODE = 258
+
+
+def get_frame_size(text):
+    """Calculate size of multiline text fragment,
+    return pair — number of rows and colums."""
+
+    lines = text.splitlines()
+    rows = len(lines)
+    columns = max([len(line) for line in lines])
+    return rows, columns
+
+
+def read_controls(canvas):
+    """Read keys pressed and returns tuple witl controls state."""
+
+    rows_direction = columns_direction = 0
+    space_pressed = False
+
+    while True:
+        pressed_key_code = canvas.getch()
+
+        if pressed_key_code == -1:
+            # https://docs.python.org/3/library/curses.html#curses.window.getch
+            break
+
+        if pressed_key_code == UP_KEY_CODE:
+            rows_direction = -1
+
+        if pressed_key_code == DOWN_KEY_CODE:
+            rows_direction = 1
+
+        if pressed_key_code == RIGHT_KEY_CODE:
+            columns_direction = 1
+
+        if pressed_key_code == LEFT_KEY_CODE:
+            columns_direction = -1
+
+        if pressed_key_code == SPACE_KEY_CODE:
+            space_pressed = True
+
+    return rows_direction, columns_direction, space_pressed
+
+
 def draw_frame(canvas, start_row, start_column, text, negative=False):
-    """Draw multiline text fragment on canvas, erase text instead of drawing if negative=True is specified."""
-    
+    """Draw multiline text fragment on canvas, erase text instead of
+    drawing if negative=True is specified."""
+
     rows_number, columns_number = canvas.getmaxyx()
 
     for row, line in enumerate(text.splitlines(), round(start_row)):
@@ -23,13 +72,10 @@ def draw_frame(canvas, start_row, start_column, text, negative=False):
 
             if column >= columns_number:
                 break
-                
+
             if symbol == ' ':
                 continue
 
-            # Check that current position it is not in a lower right corner of the window
-            # Curses will raise exception in that case. Don`t ask why…
-            # https://docs.python.org/3/library/curses.html#curses.window.addch
             if row == rows_number - 1 and column == columns_number - 1:
                 continue
 
@@ -37,7 +83,8 @@ def draw_frame(canvas, start_row, start_column, text, negative=False):
             canvas.addch(row, column, symbol)
 
 
-async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
+async def fire(canvas, start_row, start_column,
+               rows_speed=-0.3, columns_speed=0):
     """Display animation of gun shot, direction and speed can be specified."""
 
     row, column = start_row, start_column
@@ -67,14 +114,12 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         column += columns_speed
 
 
-async def blink(canvas, row, column, sleep_time, symbol='*'):
+async def blink(canvas, row, column, symbol='*'):
+    sleep_time = randint(0, 30)
     for i in range(sleep_time):
-            canvas.addstr(row, column, symbol, curses.A_DIM)
-            await asyncio.sleep(0)
+        canvas.addstr(row, column, symbol, curses.A_DIM)
+        await asyncio.sleep(0)
     while True:
-        for i in range(20):
-            canvas.addstr(row, column, symbol, curses.A_DIM)
-            await asyncio.sleep(0)
 
         for i in range(4):
             canvas.addstr(row, column, symbol)
@@ -88,6 +133,16 @@ async def blink(canvas, row, column, sleep_time, symbol='*'):
             canvas.addstr(row, column, symbol)
             await asyncio.sleep(0)
 
+        for i in range(20):
+            canvas.addstr(row, column, symbol, curses.A_DIM)
+            await asyncio.sleep(0)
+
+
+def is_inside(canvas, row, column, height, width):
+    rows_number, columns_number = canvas.getmaxyx()
+    y_inside = 0 < row < rows_number - height
+    x_inside = 0 < column < columns_number - width
+    return y_inside and x_inside
 
 
 def draw(canvas):
@@ -98,28 +153,36 @@ def draw(canvas):
         rocket_frame_1 = f.read()
     with open('frames/rocket_frame_2.txt', 'r') as f:
         rocket_frame_2 = f.read()
-    rocket_width = 5
-    rocket_height = 9
+    rocket_height, rocket_width = get_frame_size(rocket_frame_1)
 
     canvas.border()
     curses.curs_set(False)
+    canvas.nodelay(True)
 
     max_raw, max_column = canvas.getmaxyx()
     coroutines = []
-    for _ in range (100):
+    star_positions = []
+    for _ in range(200):
         symbol = choice(['*', ':', '+', '.'])
-        row = randint(3, max_raw)
-        column  = randint(3, max_column)
 
-        sleep_time = randint(0,15)
-        star_coroutine = blink(canvas, row-2, column-2, sleep_time, symbol)
+        row = randint(3, max_raw)
+        column = randint(3, max_column)
+        while (row, column) in star_positions:
+            row = randint(3, max_raw)
+            column = randint(3, max_column)
+
+        star_positions.append((row, column))
+
+        star_coroutine = blink(canvas, row-2, column-2, symbol)
         coroutines.append(star_coroutine)
 
     fire_coroutine = fire(canvas, max_raw - 2, max_column/2)
     coroutines.append(fire_coroutine)
 
-    rocket_frames = [rocket_frame_1, rocket_frame_1,]
+    rocket_frames = [rocket_frame_1, rocket_frame_2]
     rocket_iterator = cycle(rocket_frames)
+    rocket_row = (max_raw - rocket_height) / 2
+    rocket_column = (max_column - rocket_width) / 2
 
     for tic in count(0):
         for coroutine in coroutines.copy():
@@ -129,19 +192,42 @@ def draw(canvas):
                 coroutines.remove(coroutine)
         if not coroutines:
             break
-        time.sleep(TIC_TIMEOUT)
-        if tic//10 % 2 == 0:
-            next(rocket_iterator)
+
+        if tic % 2 == 0:
+            rocket_frame = next(rocket_iterator)
+
+        rows_direction, columns_direction, space_pressed =  \
+            read_controls(canvas)
+
+        inside = is_inside(
+            canvas,
+            rocket_row + rows_direction,
+            rocket_column + columns_direction,
+            rocket_height,
+            rocket_width)
+
+        if inside:
+            rocket_row += rows_direction
+            rocket_column += columns_direction
+
         draw_frame(
             canvas,
-            (max_raw - rocket_height) / 2,
-            (max_column - rocket_width) / 2,
-            rocket_iterator
+            rocket_row,
+            rocket_column,
+            rocket_frame
         )
         canvas.refresh()
 
+        draw_frame(
+            canvas,
+            rocket_row,
+            rocket_column,
+            rocket_frame,
+            negative=True
+        )
+        time.sleep(TIC_TIMEOUT)
 
-  
+
 if __name__ == '__main__':
 
     curses.update_lines_cols()
