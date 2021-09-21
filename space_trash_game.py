@@ -147,7 +147,7 @@ def is_inside(canvas, row, column, height, width):
 
 def draw(canvas):
 
-    TIC_TIMEOUT = 0.1
+    tic_timeout = 0.1
 
     with open('frames/rocket_frame_1.txt', 'r') as f:
         rocket_frame_1 = f.read()
@@ -225,7 +225,7 @@ def draw(canvas):
             rocket_frame,
             negative=True
         )
-        time.sleep(TIC_TIMEOUT)
+        time.sleep(tic_timeout)
 
 
 if __name__ == '__main__':
