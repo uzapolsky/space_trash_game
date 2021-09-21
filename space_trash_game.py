@@ -165,18 +165,20 @@ def draw(canvas):
     for _ in range(200):
         symbol = choice(['*', ':', '+', '.'])
 
-        row = randint(3, max_raw)
-        column = randint(3, max_column)
+        bottom_indent = 1
+        top_indent = 2
+        row = randint(bottom_indent, max_raw-top_indent)
+        column = randint(bottom_indent, max_column-top_indent)
         while (row, column) in star_positions:
-            row = randint(3, max_raw)
-            column = randint(3, max_column)
+            row = randint(bottom_indent, max_raw-top_indent)
+            column = randint(bottom_indent, max_column-top_indent)
 
         star_positions.append((row, column))
-
-        star_coroutine = blink(canvas, row-2, column-2, symbol)
+        star_coroutine = blink(canvas, row, column, symbol)
         coroutines.append(star_coroutine)
 
-    fire_coroutine = fire(canvas, max_raw - 2, max_column/2)
+    center_column = max_column/2
+    fire_coroutine = fire(canvas, max_raw - top_indent, center_column)
     coroutines.append(fire_coroutine)
 
     rocket_frames = [rocket_frame_1, rocket_frame_2]
