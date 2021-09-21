@@ -116,24 +116,24 @@ async def fire(canvas, start_row, start_column,
 
 async def blink(canvas, row, column, symbol='*'):
     sleep_time = randint(0, 30)
-    for i in range(sleep_time):
+    for _ in range(sleep_time):
         canvas.addstr(row, column, symbol, curses.A_DIM)
         await asyncio.sleep(0)
     while True:
 
-        for i in range(4):
+        for _ in range(4):
             canvas.addstr(row, column, symbol)
             await asyncio.sleep(0)
 
-        for i in range(2):
+        for _ in range(2):
             canvas.addstr(row, column, symbol, curses.A_BOLD)
             await asyncio.sleep(0)
 
-        for i in range(2):
+        for _ in range(2):
             canvas.addstr(row, column, symbol)
             await asyncio.sleep(0)
 
-        for i in range(20):
+        for _ in range(20):
             canvas.addstr(row, column, symbol, curses.A_DIM)
             await asyncio.sleep(0)
 
