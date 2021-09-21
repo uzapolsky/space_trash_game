@@ -159,7 +159,7 @@ def draw(canvas):
     curses.curs_set(False)
     canvas.nodelay(True)
 
-    max_raw, max_column = canvas.getmaxyx()
+    height, width = canvas.getmaxyx()
     coroutines = []
     star_positions = []
     for _ in range(200):
@@ -167,24 +167,24 @@ def draw(canvas):
 
         bottom_indent = 1
         top_indent = 2
-        row = randint(bottom_indent, max_raw-top_indent)
-        column = randint(bottom_indent, max_column-top_indent)
+        row = randint(bottom_indent, height-top_indent)
+        column = randint(bottom_indent, width-top_indent)
         while (row, column) in star_positions:
-            row = randint(bottom_indent, max_raw-top_indent)
-            column = randint(bottom_indent, max_column-top_indent)
+            row = randint(bottom_indent, height-top_indent)
+            column = randint(bottom_indent, width-top_indent)
 
         star_positions.append((row, column))
         star_coroutine = blink(canvas, row, column, symbol)
         coroutines.append(star_coroutine)
 
-    center_column = max_column/2
-    fire_coroutine = fire(canvas, max_raw - top_indent, center_column)
+    center_column = width/2
+    fire_coroutine = fire(canvas, height - top_indent, center_column)
     coroutines.append(fire_coroutine)
 
     rocket_frames = [rocket_frame_1, rocket_frame_2]
     rocket_iterator = cycle(rocket_frames)
-    rocket_row = (max_raw - rocket_height) / 2
-    rocket_column = (max_column - rocket_width) / 2
+    rocket_row = (height - rocket_height) / 2
+    rocket_column = (width - rocket_width) / 2
 
     for tic in count(0):
         for coroutine in coroutines.copy():
